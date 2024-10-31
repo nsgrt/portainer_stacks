@@ -1,0 +1,46 @@
+services:
+  rabbitmq:
+    image: rabbitmq:management
+    container_name: rapsyrabbit
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 30s
+      retries: 3
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
+    ports:
+      - "5672:5672" # RabbitMQ
+      - "15672:15672" # RabbitMQ Management
+      - "1883:1883" # MQTT
+      - "15675:15675" # MQTT Websocket
+    configs:
+      - source: plugins
+        target: /etc/rabbitmq/enabled_plugins
+    networks:
+        - raspyrabbit_net
+    volumes:
+        - rabbitmq_data:/var/lib/rabbitmq/
+        - rabbitmq_logs:/var/log/rabbitmq
+    restart: always
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: rapsyrabbit_cloudflared
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TOKEN}
+    networks:
+      - raspyrabbit_net
+    restart: always
+
+configs:
+  plugins:
+    content: "[rabbitmq_management, rabbitmq_mqtt, rabbitmq_web_mqtt]."  
+
+volumes:
+  rabbitmq_data:
+  rabbitmq_logs:
+
+networks:
+  raspyrabbit_net:
+    driver: bridge
